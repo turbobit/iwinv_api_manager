@@ -61,7 +61,7 @@ export default function ImageList() {
             xs={12} 
             sm={6} 
             md={4} 
-            key={image.image_id}
+            key={`${image.image_id}-${index}`}
             ref={index === images.length - 1 ? lastImageElementRef : undefined}
           >
             <Card 
