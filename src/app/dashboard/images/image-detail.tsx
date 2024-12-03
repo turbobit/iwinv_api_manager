@@ -41,26 +41,7 @@ export function ImageDetail({ imageId, onClose }: ImageDetailProps) {
 
         fetchImageDetail();
     }, [imageId]);
-
-    const formatSize = (size: number | undefined) => {
-        if (!size) return '0 B';
-
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        let index = 0;
-        let convertedSize = size;
-
-        while (convertedSize >= 1024 && index < units.length - 1) {
-            convertedSize /= 1024;
-            index++;
-        }
-
-        return `${convertedSize.toFixed(2)} ${units[index]}`;
-    };
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString();
-    };
-
+    
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'active':
