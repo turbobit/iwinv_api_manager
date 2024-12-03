@@ -18,32 +18,77 @@ interface Volume {
 interface Instance {
   instance_id: string;
   name: string;
-  description: string;
+  description: string | null;
   status: string;
-  power: string;
-  task: string | null;
+  provide: string;
+  start_date: string;
+  stop_date: string | null;
+  default_account: {
+    username: string;
+    password: string;
+  };
+  ip: Array<{
+    public: {
+      address: string;
+      attached: boolean;
+    };
+    private: {
+      address: string;
+      netmask: string;
+      network: string;
+      broadcast: string;
+      gateway: string;
+    };
+    type: string;
+  }>;
+  zone: {
+    zone_id: string;
+    name: string;
+  };
   flavor: {
     flavor_id: string;
     name: string;
-    spec: {
-      type: string;
-      vcpu: number;
-      memory: number;
-      disk: number;
-      network: number;
-    }
+    type: string;
+    vcpu: number;
+    memory: number;
+    disk: number;
+    network: number;
+    gpu: null | string;
   };
   image: {
     image_id: string;
-    name: string;
-    os_type: string;
-    version: string;
+    visibility: string;
+    os: {
+      type: string;
+      name: string;
+      status: string;
+      content: string[];
+      os_type: string;
+      version: string;
+      oid: string;
+    };
+    image_type: string;
+    zone: string[];
   };
-  networks: Network[];
-  volumes: Volume[];
-  zone: string;
-  created_at: string;
-  updated_at: string;
+  monitoring: {
+    port: string;
+    resource: string;
+  };
+  block_storage: Volume[];
+  vnc: {
+    link: string;
+    type: string;
+  };
+  connection_limit: {
+    block_storage: number;
+    ip: number;
+  };
+  traffic: {
+    default: number;
+    period: string;
+    limit: number | null;
+    reset_allow_count: number | null;
+  };
 }
 
 export interface InstanceListResponse {

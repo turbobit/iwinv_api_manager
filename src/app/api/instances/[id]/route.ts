@@ -25,6 +25,9 @@ export async function GET(request: Request, { params }: Props) {
     const response = await networkAdapter.request({
       method: 'GET',
       path: `/v1/instances/${params.id}`,
+      queryParams: {
+        fields: '262143'
+      }
     });
 
     return NextResponse.json(response);

@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Card, CardContent, Typography, Grid, Box, Chip } from '@mui/material';
+import { Card, CardContent, Typography, Grid, Box } from '@mui/material';
 import { Instance } from '@/types/instance';
+import { InstanceDetail } from './instance-detail';
 
 export default function InstanceList() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [pageNo, setPageNo] = useState(1);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
   const observer = useRef<IntersectionObserver>();
 
   const lastInstanceElementRef = useCallback((node: HTMLDivElement) => {
@@ -42,8 +44,18 @@ export default function InstanceList() {
     fetchInstances();
   }, [pageNo]);
 
+  const handleCardClick = (instanceId: string, event: React.MouseEvent) => {
+    if (event.metaKey || event.ctrlKey) {
+      setSelectedDetailId(instanceId);
+    }
+  };
+
   return (
     <>
+      <Box mb={2} p={2} bgcolor="info.main" color="white" borderRadius={1}>
+        Ctrl(Cmd) + 클릭으로 상세 정보를 볼 수 있습니다.
+      </Box>
+
       {instances.length === 0 && !loading ? (
         <Box textAlign="center" py={4}>
           <Typography variant="h6" color="textSecondary">
@@ -58,26 +70,28 @@ export default function InstanceList() {
               xs={12} 
               sm={6} 
               md={4} 
-              key={instance.instance_id}
+              key={`${instance.instance_id}-${index}`}
               ref={index === instances.length - 1 ? lastInstanceElementRef : undefined}
             >
-              <Card>
+              <Card 
+                sx={{ 
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'grey.50',
+                  }
+                }}
+                onClick={(e) => handleCardClick(instance.instance_id, e)}
+              >
                 <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6">
-                      {instance.name}
-                    </Typography>
-                  </Box>
-                  <Box mb={2}>
-                    <Chip 
-                      label={instance.status} 
-                      color={instance.status === 'active' ? 'success' : 'default'} 
-                      size="small" 
-                    />
-                  </Box>
+                  <Typography variant="h6" component="div">
+                    {instance.name}
+                  </Typography>
                   <Box mt={2}>
                     <Typography variant="body2">
                       Zone: {instance.zone.name}
+                    </Typography>
+                    <Typography variant="body2">
+                      Status: {instance.status}
                     </Typography>
                     <Typography variant="body2">
                       Provide: {instance.provide}
@@ -94,6 +108,13 @@ export default function InstanceList() {
         <Box mt={3} textAlign="center">
           <Typography>로딩중...</Typography>
         </Box>
+      )}
+
+      {selectedDetailId && (
+        <InstanceDetail
+          instanceId={selectedDetailId}
+          onClose={() => setSelectedDetailId(null)}
+        />
       )}
     </>
   );

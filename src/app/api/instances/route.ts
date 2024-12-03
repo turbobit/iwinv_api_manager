@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const response = await networkAdapter.request({
       method: 'GET',
       path: '/v1/instances',
-    //   queryParams: { page }
+      queryParams: { page }
     });
     console.log(response);
 
