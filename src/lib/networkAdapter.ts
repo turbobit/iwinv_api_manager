@@ -36,7 +36,7 @@ interface ApiError {
 }
 
 export class NetworkAdapter {
-  private baseUrl = 'https://api-krb.iwinv.kr';
+  private baseUrl = 'https://api-kr.iwinv.kr';
   private requestCount = 0;
   private lastResetTime = Date.now();
   private readonly maxRequestsPerMinute = API_CONSTANTS.MAX_REQUESTS_PER_MINUTE;
