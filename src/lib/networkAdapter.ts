@@ -5,11 +5,41 @@ interface RequestConfig {
   body?: unknown;
 }
 
+// API 관련 상수 정의
+const API_CONSTANTS = {
+  MAX_REQUESTS_PER_MINUTE: 60,
+  RESET_INTERVAL: 60000, // 1분 (밀리초)
+} as const;
+
+// 에러 코드 타입 정의
+type ErrorCode = 
+  | 'SUCCESS'
+  | 'NOT_FOUND'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'INTERNAL_SERVER_ERROR';
+
+interface ApiResponse<T> {
+  code: string;
+  error_code: ErrorCode;
+  message: string;
+  result: T;
+  count?: number;
+}
+
+interface ApiError {
+  code: string;
+  error_code: ErrorCode;
+  message: string;
+  result: "error";
+}
+
 export class NetworkAdapter {
   private baseUrl = 'https://api-krb.iwinv.kr';
   private requestCount = 0;
   private lastResetTime = Date.now();
-  private readonly maxRequestsPerMinute = 60;
+  private readonly maxRequestsPerMinute = API_CONSTANTS.MAX_REQUESTS_PER_MINUTE;
 
   constructor(
     private readonly accessKey: string,
@@ -18,7 +48,7 @@ export class NetworkAdapter {
 
   private resetRequestCountIfNeeded() {
     const now = Date.now();
-    if (now - this.lastResetTime >= 60000) {
+    if (now - this.lastResetTime >= API_CONSTANTS.RESET_INTERVAL) {
       this.requestCount = 0;
       this.lastResetTime = now;
     }
@@ -28,7 +58,7 @@ export class NetworkAdapter {
     this.resetRequestCountIfNeeded();
     
     if (this.requestCount >= this.maxRequestsPerMinute) {
-      const waitTime = 60000 - (Date.now() - this.lastResetTime);
+      const waitTime = API_CONSTANTS.RESET_INTERVAL - (Date.now() - this.lastResetTime);
       throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
     }
     
@@ -71,71 +101,78 @@ export class NetworkAdapter {
       .join('');
   }
 
-  async request<T>({ path, method = 'GET', queryParams, body }: RequestConfig): Promise<T> {
-    await this.checkRateLimit();
-    
-    const headers = await this.generateHeaders(path);
-    const url = new URL(path, this.baseUrl);
-    
-    if (queryParams) {
-      Object.entries(queryParams).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
+  private formatDebugTime(): string {
+    return new Date().toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/\. /g, '-').replace(/:/g, ':').replace(/\.$/, '');
+  }
+
+  private logDebugInfo(type: 'request' | 'response', data: Record<string, unknown>) {
+    if (process.env.NODE_ENV === 'development') {
+      console.group(`API ${type} Debug`);
+      console.log('Timestamp:', this.formatDebugTime());
+      Object.entries(data).forEach(([key, value]) => {
+        console.log(`${key}:`, value);
       });
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      const now = new Date();
-      const formattedTime = now.toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).replace(/\. /g, '-').replace(/:/g, ':').replace(/\.$/, '');
-
-      console.group('API Request Debug');
-      console.log('Timestamp:', formattedTime);
-      console.log('Full URL:', url.toString());
-      console.log('Base URL:', this.baseUrl);
-      console.log('Path:', path);
-      console.log('Method:', method);
-      console.log('Headers:', Object.fromEntries(headers.entries()));
-      console.log('Query Params:', queryParams);
-      console.log('Body:', body);
       console.groupEnd();
     }
+  }
 
-    const response = await fetch(url.toString(), {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  async request<T>({ path, method = 'GET', queryParams, body }: RequestConfig): Promise<ApiResponse<T>> {
+    try {
+      await this.checkRateLimit();
+      
+      const headers = await this.generateHeaders(path);
+      const url = new URL(path, this.baseUrl);
+      
+      if (queryParams) {
+        Object.entries(queryParams).forEach(([key, value]) => {
+          url.searchParams.append(key, value);
+        });
+      }
 
-    if (process.env.NODE_ENV === 'development') {
-      const now = new Date();
-      const formattedTime = now.toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).replace(/\. /g, '-').replace(/:/g, ':').replace(/\.$/, '');
+      this.logDebugInfo('request', {
+        'Full URL': url.toString(),
+        'Base URL': this.baseUrl,
+        'Path': path,
+        'Method': method,
+        'Headers': Object.fromEntries(headers.entries()),
+        'Query Params': queryParams,
+        'Body': body
+      });
 
-      console.group('API Response Debug');
-      console.log('Timestamp:', formattedTime);
-      console.log('Status:', response.status);
-      console.log('Status Text:', response.statusText);
-      console.groupEnd();
+      const response = await fetch(url.toString(), {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      this.logDebugInfo('response', {
+        'Status': response.status,
+        'Status Text': response.statusText
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json() as ApiError;
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json() as ApiResponse<T>;
+      
+      if (responseData.error_code !== 'SUCCESS') {
+        throw new Error(responseData.message || 'API 요청 실패');
+      }
+
+      return responseData;
+    } catch (error) {
+      console.error('API 요청 실패:', error);
+      throw error;
     }
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response.json();
   }
 } 
