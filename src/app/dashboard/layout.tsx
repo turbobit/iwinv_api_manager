@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
 import { logout } from '@/utils/auth';
@@ -22,16 +20,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const router = useRouter();
 
-  useEffect(() => {
-    const accessKey = sessionStorage.getItem('accessKey');
-    const secretKey = sessionStorage.getItem('secretKey');
-    
-    if (!accessKey || !secretKey) {
-      router.push('/');
-    }
-  }, [router]);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
