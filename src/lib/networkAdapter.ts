@@ -84,8 +84,22 @@ export class NetworkAdapter {
     }
 
     if (process.env.NODE_ENV === 'development') {
+      const now = new Date();
+      const formattedTime = now.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(/\. /g, '-').replace(/:/g, ':').replace(/\.$/, '');
+
       console.group('API Request Debug');
-      console.log('URL:', url.toString());
+      console.log('Timestamp:', formattedTime);
+      console.log('Full URL:', url.toString());
+      console.log('Base URL:', this.baseUrl);
+      console.log('Path:', path);
       console.log('Method:', method);
       console.log('Headers:', Object.fromEntries(headers.entries()));
       console.log('Query Params:', queryParams);
@@ -100,7 +114,19 @@ export class NetworkAdapter {
     });
 
     if (process.env.NODE_ENV === 'development') {
+      const now = new Date();
+      const formattedTime = now.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(/\. /g, '-').replace(/:/g, ':').replace(/\.$/, '');
+
       console.group('API Response Debug');
+      console.log('Timestamp:', formattedTime);
       console.log('Status:', response.status);
       console.log('Status Text:', response.statusText);
       console.groupEnd();
