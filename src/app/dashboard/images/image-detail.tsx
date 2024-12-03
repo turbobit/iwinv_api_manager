@@ -111,11 +111,13 @@ export function ImageDetail({ imageId, onClose }: ImageDetailProps) {
                             </Grid>
                             <Grid item xs={6}>
                                 <Typography variant="body2" color="textSecondary">상태</Typography>
-                                <Typography variant="body1"><Chip
-                                    label={image.os.status}
-                                    color={getStatusColor(image.os.status)}
-                                    size="small"
-                                /></Typography>
+                                <Box>
+                                    <Chip
+                                        label={image.os.status}
+                                        color={getStatusColor(image.os.status)}
+                                        size="small"
+                                    />
+                                </Box>
                             </Grid>
                             {image.os.content && image.os.content.length > 0 && (
                                 <Grid item xs={12}>

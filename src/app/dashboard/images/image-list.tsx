@@ -1,77 +1,83 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, Typography, Grid, Box, Chip } from '@mui/material';
 import { Image } from '@/types/image';
 import { ImageDetail } from './image-detail';
+import { useResource } from '@/contexts/resource-context';
 
 export default function ImageList() {
   const [images, setImages] = useState<Image[]>([]);
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [pageNo, setPageNo] = useState(1);
-  const observer = useRef<IntersectionObserver>();
-
-  const lastImageElementRef = useCallback((node: HTMLDivElement) => {
-    if (loading) return;
-    if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPageNo(prevPageNo => prevPageNo + 1);
-      }
-    });
-    if (node) observer.current.observe(node);
-  }, [loading, hasMore]);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
+  const { selectedImage, setSelectedImage } = useResource();
 
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(`/api/images?page=${pageNo}`);
+        const response = await fetch('/api/images');
         const data = await response.json();
         if (data.result) {
-          setImages(prev => [...prev, ...data.result]);
-          setHasMore(data.result.length > 0 && data.page_no * data.page_size < data.count);
+          setImages(data.result);
         }
       } catch (error) {
         console.error('Error fetching images:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchImages();
-  }, [pageNo]);
+  }, []);
 
-  const handleCardClick = (imageId: string) => {
-    setSelectedImageId(imageId);
+  const handleCardClick = (imageId: string, event: React.MouseEvent) => {
+    // Ctrl/Cmd + 클릭으로 상세 정보 보기
+    if (event.ctrlKey || event.metaKey) {
+      setSelectedDetailId(imageId);
+    } else {
+      // 일반 클릭으로 선택/해제
+      setSelectedImage(selectedImage === imageId ? null : imageId);
+    }
   };
 
   const handleCloseDetail = () => {
-    setSelectedImageId(null);
+    setSelectedDetailId(null);
   };
 
   return (
     <>
+      <Box mb={2} p={2} bgcolor="info.main" color="white" borderRadius={1}>
+        Ctrl(Cmd) + 클릭으로 상세 정보를 볼 수 있습니다.
+      </Box>
+
       <Grid container spacing={3}>
-        {images.map((image, index) => (
-          <Grid 
-            item 
-            xs={12} 
-            sm={6} 
-            md={4} 
-            key={`${image.image_id}-${index}`}
-            ref={index === images.length - 1 ? lastImageElementRef : undefined}
-          >
+        {images.map((image) => (
+          <Grid item xs={12} sm={6} md={4} key={image.image_id}>
             <Card 
-              sx={{ cursor: 'pointer' }}
-              onClick={() => handleCardClick(image.image_id)}
+              sx={{ 
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                ...(selectedImage === image.image_id && {
+                  border: '2px solid',
+                  borderColor: 'primary.main',
+                  bgcolor: 'primary.50',
+                }),
+                '&:hover': {
+                  bgcolor: selectedImage === image.image_id ? 'primary.50' : 'grey.50',
+                }
+              }}
+              onClick={(e) => handleCardClick(image.image_id, e)}
             >
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {image.os.name}
-                </Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="start">
+                  <Typography variant="h6" gutterBottom>
+                    {image.os.name}
+                  </Typography>
+                  {selectedImage === image.image_id && (
+                    <Chip 
+                      label="선택됨" 
+                      color="primary" 
+                      size="small" 
+                    />
+                  )}
+                </Box>
                 <Box mb={2}>
                   <Chip 
                     label={image.visibility} 
@@ -134,15 +140,9 @@ export default function ImageList() {
         ))}
       </Grid>
 
-      {loading && (
-        <Box mt={3} textAlign="center">
-          <Typography>Loading...</Typography>
-        </Box>
-      )}
-
-      {selectedImageId && (
+      {selectedDetailId && (
         <ImageDetail 
-          imageId={selectedImageId} 
+          imageId={selectedDetailId} 
           onClose={handleCloseDetail}
         />
       )}
