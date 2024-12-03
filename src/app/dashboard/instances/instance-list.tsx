@@ -12,6 +12,7 @@ export default function InstanceList() {
   const [pageNo, setPageNo] = useState(1);
   const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
   const observer = useRef<IntersectionObserver>();
+  const isFirstRender = useRef(true);
 
   const lastInstanceElementRef = useCallback((node: HTMLDivElement) => {
     if (loading) return;
@@ -25,13 +26,46 @@ export default function InstanceList() {
   }, [loading, hasMore]);
 
   useEffect(() => {
+    if (!isFirstRender.current) return;
+
     const fetchInstances = async () => {
       try {
         setLoading(true);
         const response = await fetch(`/api/instances?page=${pageNo}`);
         const data = await response.json();
+        
         if (data.result) {
-          setInstances(prev => [...prev, ...data.result]);
+          setInstances(data.result);
+          setHasMore(data.result.length > 0 && data.page_no * data.page_size < data.count);
+        }
+      } catch (error) {
+        console.error('Error fetching instances:', error);
+      } finally {
+        setLoading(false);
+        isFirstRender.current = false;
+      }
+    };
+
+    fetchInstances();
+  }, [pageNo]);
+
+  useEffect(() => {
+    if (isFirstRender.current) return;
+
+    const fetchMoreInstances = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/instances?page=${pageNo}`);
+        const data = await response.json();
+        
+        if (data.result) {
+          setInstances(prev => {
+            const existingIds = new Set(prev.map(i => i.instance_id));
+            const newInstances = data.result.filter((instance: Instance) => 
+              !existingIds.has(instance.instance_id)
+            );
+            return [...prev, ...newInstances];
+          });
           setHasMore(data.result.length > 0 && data.page_no * data.page_size < data.count);
         }
       } catch (error) {
@@ -41,8 +75,22 @@ export default function InstanceList() {
       }
     };
 
-    fetchInstances();
+    fetchMoreInstances();
   }, [pageNo]);
+
+  // 인스턴스 삭제 후 목록 새로고침을 위한 이벤트 리스너
+  useEffect(() => {
+    const handleRefresh = () => {
+      setInstances([]);
+      setPageNo(1);
+      setHasMore(true);
+    };
+
+    window.addEventListener('refreshInstanceList', handleRefresh);
+    return () => {
+      window.removeEventListener('refreshInstanceList', handleRefresh);
+    };
+  }, []);
 
   const handleCardClick = (instanceId: string, event: React.MouseEvent) => {
     if (event.metaKey || event.ctrlKey) {
