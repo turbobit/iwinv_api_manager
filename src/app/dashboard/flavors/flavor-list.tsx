@@ -53,10 +53,11 @@ export default function FlavorList() {
 
       <Grid container spacing={3}>
         {flavors.map((flavor) => {
-          const monthlyPrice = Number(flavor.price.full.KRW.price);
-          const monthlyVat = Number(flavor.price.full.KRW.vat);
-          const monthlyTotal = Number(flavor.price.full.KRW.total);
-          const dailyTotal = Number(flavor.price.partial.KRW.total);
+          console.log(flavor.price);
+          const monthlyPrice = Number(flavor.price.full.KRW);
+          const monthlyVat = Number(flavor.price.full.KRW)*0.1;
+          const monthlyTotal = Number(flavor.price.full.KRW) + Number(flavor.price.full.KRW)*0.1;
+          const dailyTotal = Number(flavor.price.partial.KRW) + Number(flavor.price.partial.KRW)*0.1;
 
           return (
             <Grid item xs={12} sm={6} md={4} key={flavor.flavor_id}>
