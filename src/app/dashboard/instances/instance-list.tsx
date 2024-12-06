@@ -13,6 +13,8 @@ export default function InstanceList() {
   const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
   const observer = useRef<IntersectionObserver>();
   const isFirstRender = useRef(true);
+  const [updatedInstances, setUpdatedInstances] = useState<Set<string>>(new Set());
+  const statusCheckInterval = useRef<NodeJS.Timeout>();
 
   const lastInstanceElementRef = useCallback((node: HTMLDivElement) => {
     if (loading) return;
@@ -92,6 +94,52 @@ export default function InstanceList() {
     };
   }, []);
 
+  // 상태 변경 확인을 위한 주기적 API 호출
+  useEffect(() => {
+    const checkInstanceStatus = async () => {
+      try {
+        const response = await fetch(`/api/instances?page=${pageNo}`);
+        const data = await response.json();
+        
+        if (data.result) {
+          setInstances(prev => {
+            const newUpdated = new Set<string>();
+            const newInstances = prev.map(instance => {
+              const updated = data.result.find((i: Instance) => i.instance_id === instance.instance_id);
+              if (updated && updated.status !== instance.status) {
+                newUpdated.add(instance.instance_id);
+                return { ...instance, status: updated.status };
+              }
+              return instance;
+            });
+            setUpdatedInstances(newUpdated);
+            return newInstances;
+          });
+        }
+      } catch (error) {
+        console.error('Error checking instance status:', error);
+      }
+    };
+
+    statusCheckInterval.current = setInterval(checkInstanceStatus, 3000);
+
+    return () => {
+      if (statusCheckInterval.current) {
+        clearInterval(statusCheckInterval.current);
+      }
+    };
+  }, [instances, pageNo]);
+
+  // 상태 변경 강조 효과 제거를 위한 타이머
+  useEffect(() => {
+    if (updatedInstances.size > 0) {
+      const timer = setTimeout(() => {
+        setUpdatedInstances(new Set());
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [updatedInstances]);
+
   const handleCardClick = (instanceId: string, event: React.MouseEvent) => {
     if (event.metaKey || event.ctrlKey) {
       setSelectedDetailId(instanceId);
@@ -126,7 +174,20 @@ export default function InstanceList() {
                   cursor: 'pointer',
                   '&:hover': {
                     bgcolor: 'grey.50',
-                  }
+                  },
+                  ...(updatedInstances.has(instance.instance_id) && {
+                    animation: 'highlight 3s',
+                    '@keyframes highlight': {
+                      '0%': {
+                        backgroundColor: '#4caf50',
+                        transform: 'scale(1.02)',
+                      },
+                      '100%': {
+                        backgroundColor: 'transparent',
+                        transform: 'scale(1)',
+                      },
+                    },
+                  }),
                 }}
                 onClick={(e) => handleCardClick(instance.instance_id, e)}
               >
