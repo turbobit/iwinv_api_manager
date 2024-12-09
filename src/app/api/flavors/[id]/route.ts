@@ -35,7 +35,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { error: 'Flavor 상세 정보를 가져오��데 실패했습니다.' },
+      { error: 'Flavor 상세 정보를 가져오는데 실패했습니다.' },
       { status: 500 }
     );
   }
